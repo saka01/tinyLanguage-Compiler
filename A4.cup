@@ -1,0 +1,184 @@
+import java.io.*;
+
+/* Terminals (tokens returned by the scanner). */
+terminal String IDENTIFIER;
+terminal String STRING, REAL, INT, BEGIN, END, LPAREN, RPAREN, MAIN, RETURN, IF, READ, WRITE;
+terminal String COMMA, SEMICOLON, ASSIGN, QSTRING, FSTOP;
+terminal String MINUS, PLUS, DIVIDE, TIMES, EQUALS, NOTEQUALS, ELSE;
+terminal String DIGIT, FALSE, TRUE;
+
+/* Non terminals */
+
+
+//
+non terminal String prog;
+non terminal String func;
+non terminal String type;
+non terminal String formalparams;
+non terminal String formal;
+non terminal String block;
+non terminal String statement;
+non terminal String localvar;
+non terminal String assignstatement;
+non terminal String returnstatement;
+non terminal String ifstatement;
+non terminal String writestatement;
+non terminal String readstatement;
+non terminal String expression;
+non terminal String multexpression;
+non terminal String primaryexpression;
+non terminal String actualparams;
+non terminal String boolexpression;
+non terminal String addsub;
+non terminal String timediv;
+non terminal String digits;
+non terminal String number;
+non terminal String state;
+non terminal String prog2;
+
+
+
+/* Precedences */
+precedence left PLUS, MINUS;
+precedence left TIMES, DIVIDE;
+precedence left LPAREN, RPAREN;
+precedence left IF, ELSE;
+precedence left BEGIN, END;
+
+
+/* The grammar */
+start with prog2;
+
+prog2 ::= prog:e {: RESULT = "import java.io.*; \n\npublic class A4 {\nstatic BufferedReader br;\nstatic BufferedWriter bw;\n" + e + "\n}"; :};
+
+prog ::= func:e1 {:RESULT = e1;:}
+        | prog:e1 func:e2 {:RESULT = e1 + e2;:}
+        ;
+
+number ::= digits:e1 {:RESULT = e1;:}
+        | digits:e1 FSTOP digits:e2 {:RESULT = e1 + "." + e2;:};
+
+digits ::= DIGIT:e1 {:RESULT = e1;:}
+        | DIGIT:e1 digits:e2 {:RESULT = e1 + e2;:};
+
+type ::= STRING {:RESULT = "String";:}
+        |INT {:RESULT = "int";:}
+        |REAL {:RESULT = "double";:};
+
+func ::=  type:t IDENTIFIER:i LPAREN formalparams:f RPAREN block:b
+          {:RESULT =
+          "static "
+          + t
+          + " "
+          + i
+          + "("
+          + f
+          + ") throws IOException{\n"
+          + b
+          + "\n}\n";
+          :}
+        | type:e1 MAIN IDENTIFIER:e2 LPAREN formalparams:e3 RPAREN block:b1
+         {:RESULT =
+         "public static void main "
+         + "("
+         + "String[] args"
+         +") throws IOException {\n"
+         + b1
+         + "\n}\n";
+         :};
+
+formalparams ::= formal:e1 {:RESULT = e1;:}
+                |formalparams:e1 COMMA formal:e2 {:RESULT = e1 + ", " +e2;:}
+                | {:RESULT = " ";:};
+
+formal ::= type:e1 IDENTIFIER:e2 {:RESULT = e1 + " " +e2;:};
+
+state ::= statement:e1 {:RESULT = e1;:} | state:e1 statement:e2 {:RESULT = e1 + e2;:};
+
+block ::= BEGIN state:e1 END {:RESULT = e1;:} ;
+
+statement ::= block:e1 {:RESULT = e1;:}
+             |localvar:e2 {:RESULT = e2;:}
+             |assignstatement:e3 {:RESULT = e3;:}
+             |returnstatement:e4 {:RESULT = e4;:}
+             |ifstatement:e5 {:RESULT = e5;:}
+             |writestatement:e6 {:RESULT = e6;:}
+             |readstatement:e7 {:RESULT = e7;:}
+             ;
+
+localvar ::= type:e1 IDENTIFIER:e2 SEMICOLON {:RESULT = e1 + " " + e2 + ";\n";:}
+             |type:e1 assignstatement:e2 {:RESULT = e1 + e2;:};
+
+assignstatement ::= IDENTIFIER:e1 ASSIGN expression:e2 SEMICOLON
+                    {:RESULT =
+                      e1
+                     +" = "
+                     +e2
+                     +";\n";
+                    :}
+                    |IDENTIFIER:e1 ASSIGN QSTRING:e2 SEMICOLON
+                    {:RESULT =
+                    e1
+                    + " = "
+                    + e2
+                    + ";\n" ;
+                    :};
+
+
+returnstatement ::= RETURN expression:e1 SEMICOLON
+                    {:RESULT =
+                    "return "
+                    + e1
+                    + ";";
+                    :};
+
+ifstatement ::= IF LPAREN boolexpression:e1 RPAREN statement:e2 {:RESULT = "if" + "(" + e1 + ")\n{" + e2 + "}\n";:}
+                |IF LPAREN boolexpression:e1 RPAREN statement:e2 ELSE statement:e3
+                {:RESULT = "if" + "(" + e1 + ")\n{\n" + e2 + "}"
+                 + "else{\n"
+                 + e3
+                 +"\n}";:};
+
+writestatement ::= WRITE LPAREN expression:e1 COMMA QSTRING:e2 RPAREN SEMICOLON
+                {:RESULT = "bw = new BufferedWriter(new FileWriter(" + e2 + "));\n" +
+                 "bw.write(\"\" + (" + e1 +"));\n" +
+                 "bw.close();\n";:};
+
+readstatement ::= READ LPAREN IDENTIFIER:e1 COMMA QSTRING:e2 RPAREN SEMICOLON
+                {:RESULT = "br = new BufferedReader(new FileReader(" + e2 + "));\n" +
+                e1 + " = Integer.valueOf(br.readLine());\n";:};
+
+addsub ::= PLUS {:RESULT = "+";:}
+           | MINUS {:RESULT = "-";:};
+
+timediv ::= TIMES {:RESULT = "*";:}
+            | DIVIDE {:RESULT = "/";:};
+
+expression ::= multexpression:e1 addsub:e2 multexpression:e3 {:RESULT = e1 + " " + e2 + " " + e3;:}
+              |expression:e1 addsub:e2 multexpression:e3 {:RESULT = e1 + " " + e2 + " " + e3;:}
+              |multexpression:e1 {:RESULT = e1;:};
+
+multexpression ::= primaryexpression:e1 timediv:e2 primaryexpression:e3 {:RESULT = e1 + " " + e2 + " " + e3;:}
+                | multexpression:e1 timediv:e2 primaryexpression:e3 {:RESULT = e1 + e2 + e3;:}
+                | primaryexpression:e1 {:RESULT = e1;:};
+
+primaryexpression ::= number:e1 {:RESULT = e1;:}
+                     | IDENTIFIER:e1 {:RESULT = e1;:}
+                     | LPAREN expression:e1 RPAREN {:RESULT = "(" + e1 + ")";:}
+                     | IDENTIFIER:e1 LPAREN actualparams:e2 RPAREN {:RESULT = e1 + "(" + e2 + ")" ;:};
+
+boolexpression ::= expression:e1 EQUALS expression:e2 {:RESULT = e1 + "==" + e2;:}
+                  |expression:e1 NOTEQUALS expression:e2 {:RESULT = e1 + "!=" + e2;:}
+                  |TRUE {:RESULT = "true";:}
+                  |FALSE {:RESULT = "false";:};
+
+actualparams ::= actualparams:e1 COMMA expression:e2 {:RESULT = e1 + ", " + e2;:} | expression:e1 {:RESULT = e1;:}| {:RESULT = " ";:};
+
+
+
+
+
+
+
+
+
